@@ -17,16 +17,21 @@
     <script>
         const canvas = document.getElementById("canvas")
         const cvs = canvas.getContext("2d")
-        let backgroundObjs = []
+        const defaultColor =" #FFFFFF"
+        cvs.fillStyle = defaultColor
         let lasers = []
         let explosions = []
         let turrets = []
         let ships = []
+        let total = []
+
+        const shipSpeed = 10
+        const side = [-1, 1]
 
         class Vector2D {
             constructor(xi=0, yi=0){
                 this.x = xi
-                this.y = xi
+                this.y = yi
             }
 
             get(){
@@ -37,19 +42,56 @@
                 this.x = xi
                 this.y = yi
             }
+
+            add(xi, yi){
+                this.x += xi
+                this.y += yi
+            }
         }
 
-        class Rect {
+        class Ship {
             constructor(xp=0, yp=0, xs=0, ys=0, col="#000000"){
                 this.position = new Vector2D(xp, yp)
                 this.size = new Vector2D(xs, ys)
                 this.color = col
+                this.selectedSide = side[(Math.ceil(Math.random()*2)-1)]
+                this.velocity = new Vector2D(this.selectedSide*shipSpeed, 0)
+            }
+
+            move(){
+                this.position.add(this.velocity.x, this.velocity.y)
+                if ((this.position.x < -this.size.x-1 ) || (this.position.x > window.innerWidth+this.size.x+1)) {
+                    this.despawn()
+                }
+            }
+
+            render(){
+                cvs.fillStyle = this.color
+                cvs.fillRect(this.position.x, this.position.y, this.size.x, this.size.y)
+            }
+
+            spawn(){
+                this.selectedSide = side[(Math.ceil(Math.random()*2)-1)]
+                this.position.y = Math.round(Math.random()*200)+(window.innerHeight*0.1)
+                this.position.x = this.selectedSide > 0 ? -this.size.x : window.innerWidth+this.size.x
+                this.velocity.set(this.selectedSide*shipSpeed, 0)
+                ships.push(this)
+            }
+
+            despawn(){
+                let index = ships.indexOf(this)
+                ships.splice(index, 1)
             }
         }
+
+        let frameInterval
 
         function resizeCanvas(){
             canvas.width = window.innerWidth
             canvas.height = window.innerHeight
+
+            // clearInterval(frameInterval)
+            // frameInterval = setInterval(frame, 1000/60)
         }
         resizeCanvas()
         window.addEventListener('resize', resizeCanvas, false)
@@ -60,13 +102,50 @@
             });
         }
 
-        let count = 0
-        function frame(){
-            count = count < 1000 ? count += 1 : count = 1
-
-            
+        function shipStep(){
+            ships.forEach((element) => {
+                element.move()
+            })
         }
-        setInterval(frame, 1000/60)
+
+        function drawBackground(){
+            cvs.fillStyle = "rgb(33, 65, 112)"
+            cvs.fillRect(0, 0, window.innerWidth, window.innerHeight)
+            cvs.fillStyle = "rgb(35, 131, 51)"
+            cvs.fillRect(0, window.innerHeight*0.75, window.innerWidth, window.innerHeight*0.25)
+        }
+
+        // generate 20 ships
+        for (let i = 0; i < 20; ++i) {
+            let ship = new Ship(4000, 4000, 50, 50, "#000000")
+            total.push(ship)
+        }
+
+        function spawnShip(){
+            let ship = total[0]
+            while (ships.includes(ship)) {
+                ship = total[Math.floor(Math.random()*total.length)]
+            }
+            ship.spawn()
+        }
+
+        let frameNum = 0
+        function frame(){
+            frameNum += 1
+            // spawn ship every 60 frames
+            if (((frameNum % 45) == 0) && (ships.length < 5)) {
+                spawnShip()
+                console.log("spawn")
+            }
+
+            // do
+            shipStep()
+
+            // render
+            drawBackground()
+            draw(ships)
+        }
+        frameInterval = setInterval(frame, 1000/60)
     </script>
 </body>
 </html>
