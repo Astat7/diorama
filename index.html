@@ -175,6 +175,7 @@
             constructor(xp=0, xw=0, yw=0, xe=0, ye=0, col="#151515"){
                 this.position = new Vector2D(xp, (window.innerHeight*0.75)-yw)
                 this.size = new Vector2D(xw, yw)
+                this.epicenterOffset = [xe, ye]
                 this.laser = new Laser(xp+xe, ((window.innerHeight*0.75)-yw)+ye)
                 this.color = col
             }
@@ -221,10 +222,11 @@
             canvas.width = window.innerWidth
             canvas.height = window.innerHeight
 
-            // clearInterval(frameInterval)
-            // frameInterval = setInterval(frame, 1000/60)
             turrets.forEach((element) => {
                 element.position.x = (window.innerWidth*(0.33*(turrets.indexOf(element)+1)))-(element.size.x/2)
+                element.position.y = (window.innerHeight*0.75)-element.size.y
+                element.laser.start.x = element.position.x + element.epicenterOffset[0]
+                element.laser.start.y = (window.innerHeight*0.75)-element.size.y + element.epicenterOffset[1]
             })
         }
         resizeCanvas()
