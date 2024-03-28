@@ -21,6 +21,7 @@
         cvs.fillStyle = defaultColor
         let lasers = []
         let explosions = []
+        let totalExplosions = []
         let turrets = []
         let ships = []
         let total = []
@@ -47,6 +48,47 @@
                 this.x += xi
                 this.y += yi
             }
+
+            magnitude(){
+                return Math.abs(Math.sqrt((this.x**2) + (this.y**2)))
+            }
+
+            unit(){
+                let len = this.magnitude()
+                return([this.x/len, this.y/len])
+            }
+        }
+
+        class Explosion {
+            constructor(xs=0, ys=0){
+                this.center = new Vector2D(xs, ys)
+                this.radius = 25
+                this.alpha = 1
+                this.color = "rgba(255, 215, 0, " + this.alpha + ")"
+            }
+
+            render(){
+                cvs.fillStyle = this.color
+                cvs.beginPath()
+                cvs.arc(this.center.x, this.center.y, this.radius, 0, 2*Math.PI)
+                cvs.fill()
+            }
+
+            fade(){
+                let fadeIncrement = 0.05
+                let sizeIncrement = 1
+                this.alpha = (this.alpha - fadeIncrement) >= 0 ? this.alpha - fadeIncrement : 0
+                this.radius += sizeIncrement
+                if (this.alpha <= 0) {
+                    let index = explosions.indexOf(this)
+                    if (index > -1) {
+                        explosions.splice(index, 1)
+                    }
+                    this.alpha = 1
+                    this.radius = 25
+                }
+                this.color = "rgba(255, " + (255 - (3 * this.radius))  + ", 0, " + this.alpha + ")"
+            }
         }
 
         class Ship {
@@ -70,6 +112,10 @@
                 cvs.fillRect(this.position.x, this.position.y, this.size.x, this.size.y)
             }
 
+            getCenter(){
+                return([this.position.x+(this.size.x/2), this.position.y+(this.size.y/2)])
+            }
+
             spawn(){
                 this.selectedSide = side[(Math.ceil(Math.random()*2)-1)]
                 this.position.y = Math.round(Math.random()*200)+(window.innerHeight*0.1)
@@ -82,6 +128,91 @@
                 let index = ships.indexOf(this)
                 ships.splice(index, 1)
             }
+
+            explode(){
+                let explosion = totalExplosions[0]
+                while (explosions.includes(explosion)) {
+                    explosion = totalExplosions[Math.floor(Math.random()*totalExplosions.length)]
+                }
+                explosion.center.set(this.position.x+(this.size.x/2), this.position.y+(this.size.y/2))
+                explosions.push(explosion)
+                this.despawn()
+            }
+        }
+
+        class Laser {
+            constructor(xs=0, ys=0, xe=0, ye=0){
+                this.start = new Vector2D(xs, ys)
+                this.end = new Vector2D(xe, ye)
+                this.alpha = 1
+                this.color = "rgba(255, 50, 50, " + this.alpha + ")"
+            }
+
+            render(){
+                cvs.strokeStyle = this.color
+                cvs.lineWidth = 5
+                cvs.beginPath()
+                cvs.moveTo(this.start.x, this.start.y)
+                cvs.lineTo(this.end.x, this.end.y)
+                cvs.stroke()
+            }
+
+            fade(){
+                let increment = 0.1
+                this.alpha = (this.alpha - increment) >= 0 ? this.alpha - increment : 0
+                if (this.alpha <= 0) {
+                    let index = lasers.indexOf(this)
+                    if (index > -1) {
+                        lasers.splice(index, 1)
+                    }
+                    this.alpha = 1
+                }
+                this.color = "rgba(255, 50, 50, " + this.alpha + ")"
+            }
+        }
+
+        class Turret {
+            constructor(xp=0, xw=0, yw=0, xe=0, ye=0, col="#151515"){
+                this.position = new Vector2D(xp, (window.innerHeight*0.75)-yw)
+                this.size = new Vector2D(xw, yw)
+                this.laser = new Laser(xp+xe, ((window.innerHeight*0.75)-yw)+ye)
+                this.color = col
+            }
+
+            render(){
+                cvs.fillStyle = this.color
+                cvs.fillRect(this.position.x, this.position.y, this.size.x, this.size.y)
+            }
+
+            fireAt(xi, yi){
+                this.laser.end.set(xi, yi)
+                lasers.push(this.laser)
+            }
+
+            getClosestShip(){
+                let closestShip = false
+                let closestlenght = 99999
+                ships.forEach((element) => {
+                    if ((element.position.x > 5) && (element.position.x+element.size.x < window.innerWidth-5)) {
+                        let xi = this.laser.start.x-(element.position.x+(element.size.x/2))
+                        let yi = this.laser.start.y-(element.position.y+(element.size.y/2))
+                        let length = Math.abs(Math.sqrt((xi**2)+(yi**2)))
+                        if (closestlenght > length) {
+                            closestlenght = length
+                            closestShip = element
+                        }
+                    }
+                })
+                return(closestShip)
+            }
+
+            shoot(){
+                let target = this.getClosestShip()
+                if (target) {
+                    this.fireAt(target.position.x+(target.size.x/2), target.position.y+(target.size.y/2))
+                    target.explode()
+                }
+            }
         }
 
         let frameInterval
@@ -92,6 +223,9 @@
 
             // clearInterval(frameInterval)
             // frameInterval = setInterval(frame, 1000/60)
+            turrets.forEach((element) => {
+                element.position.x = (window.innerWidth*(0.33*(turrets.indexOf(element)+1)))-(element.size.x/2)
+            })
         }
         resizeCanvas()
         window.addEventListener('resize', resizeCanvas, false)
@@ -117,7 +251,7 @@
 
         // generate 20 ships
         for (let i = 0; i < 20; ++i) {
-            let ship = new Ship(4000, 4000, 50, 50, "#000000")
+            let ship = new Ship(4000, 4000, 50, 50)
             total.push(ship)
         }
 
@@ -129,21 +263,57 @@
             ship.spawn()
         }
 
-        let frameNum = 0
+        // generate 15 explosions
+        for (let i = 0; i < 15; ++i) {
+            let explosion = new Explosion(0, 0)
+            totalExplosions.push(explosion)
+        }
+
+        // generate 2 turrets
+        let turretA = new Turret((window.innerWidth*(0.33))-25, 50, 75, 25, 25)
+        turrets.push(turretA)
+        let turretB = new Turret((window.innerWidth*(0.66))-25, 50, 75, 25, 25)
+        turrets.push(turretB)
+
+        let spawnTimer = 11 // spawn ship every 10 frames
+        let turretATimer = (Math.round(Math.random()*10))+31 // shoot every 20-30 frames
+        let turretBTimer = (Math.round(Math.random()*10))+31 // shoot every 20-30 frames
         function frame(){
-            frameNum += 1
+            // timers
+            spawnTimer = spawnTimer - 1 >= 0 ? spawnTimer - 1 : 10
+            turretATimer = turretATimer -1 >= 0 ? turretATimer - 1 : (Math.round(Math.random()*10)-5)+30
+            turretBTimer = turretBTimer -1 >= 0 ? turretBTimer - 1 : (Math.round(Math.random()*10)-5)+30
+
             // spawn ship every 60 frames
-            if (((frameNum % 45) == 0) && (ships.length < 5)) {
+            if ((spawnTimer == 0) && (ships.length < 15)) {
                 spawnShip()
-                console.log("spawn")
             }
 
             // do
             shipStep()
 
+            // fire turrets
+            if (turretATimer == 0) {
+                turretA.shoot()
+            }
+            if (turretBTimer == 0) {
+                turretB.shoot()
+            }
+
             // render
             drawBackground()
+            draw(lasers)
+            draw(explosions)
+            draw(turrets)
             draw(ships)
+
+            // fade lasers and explosions
+            lasers.forEach((element) => {
+                element.fade()
+            })
+            explosions.forEach((element) => {
+                element.fade()
+            })
         }
         frameInterval = setInterval(frame, 1000/60)
     </script>
