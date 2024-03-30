@@ -9,10 +9,19 @@
             overflow: hidden;
             margin: 0;
         }
+        div {
+            display: none;
+        }
     </style>
 </head>
 <body>
     <canvas id="canvas" width="100" height="100"></canvas>
+    <div>
+        <img src="space.png" alt="" id="SpaceImg">
+        <img src="grass.png" alt="" id="GrassImg">
+        <img src="ship.png" alt="" id="ShipRightImg">
+        <img src="ship_left.png" alt="" id="ShipLeftImg">
+    </div>
 
     <script>
         const canvas = document.getElementById("canvas")
@@ -28,6 +37,15 @@
 
         const shipSpeed = 10
         const side = [-1, 1]
+
+        const spaceImg = document.getElementById("SpaceImg")
+        const grassImg = document.getElementById("GrassImg")
+        const shipRightImg = document.getElementById("ShipRightImg")
+        const shipLeftImg = document.getElementById("ShipLeftImg")
+
+        // ---------------
+        // Classes
+        // ---------------
 
         class Vector2D {
             constructor(xi=0, yi=0){
@@ -96,7 +114,7 @@
                 this.position = new Vector2D(xp, yp)
                 this.size = new Vector2D(xs, ys)
                 this.color = col
-                this.selectedSide = side[(Math.ceil(Math.random()*2)-1)]
+                this.selectedSide = side[Math.round(Math.random())]
                 this.velocity = new Vector2D(this.selectedSide*shipSpeed, 0)
             }
 
@@ -108,8 +126,11 @@
             }
 
             render(){
-                cvs.fillStyle = this.color
-                cvs.fillRect(this.position.x, this.position.y, this.size.x, this.size.y)
+                if (this.selectedSide == -1) {
+                    cvs.drawImage(shipLeftImg, this.position.x, this.position.y, this.size.x, this.size.y)
+                } else {
+                    cvs.drawImage(shipRightImg, this.position.x, this.position.y, this.size.x, this.size.y)
+                }
             }
 
             getCenter(){
@@ -117,7 +138,7 @@
             }
 
             spawn(){
-                this.selectedSide = side[(Math.ceil(Math.random()*2)-1)]
+                this.selectedSide = side[Math.round(Math.random())]
                 this.position.y = Math.round(Math.random()*200)+(window.innerHeight*0.1)
                 this.position.x = this.selectedSide > 0 ? -this.size.x : window.innerWidth+this.size.x
                 this.velocity.set(this.selectedSide*shipSpeed, 0)
@@ -130,12 +151,14 @@
             }
 
             explode(){
-                let explosion = totalExplosions[0]
-                while (explosions.includes(explosion)) {
-                    explosion = totalExplosions[Math.floor(Math.random()*totalExplosions.length)]
+                if (explosions.length < totalExplosions.length) {
+                    let explosion = totalExplosions[0]
+                    while (explosions.includes(explosion)) {
+                        explosion = totalExplosions[Math.floor(Math.random()*totalExplosions.length)]
+                    }
+                    explosion.center.set(this.position.x+(this.size.x/2), this.position.y+(this.size.y/2))
+                    explosions.push(explosion)
                 }
-                explosion.center.set(this.position.x+(this.size.x/2), this.position.y+(this.size.y/2))
-                explosions.push(explosion)
                 this.despawn()
             }
         }
@@ -216,6 +239,10 @@
             }
         }
 
+        // ---------------
+        // Functions
+        // ---------------
+
         let frameInterval
 
         function resizeCanvas(){
@@ -245,15 +272,13 @@
         }
 
         function drawBackground(){
-            cvs.fillStyle = "rgb(33, 65, 112)"
-            cvs.fillRect(0, 0, window.innerWidth, window.innerHeight)
-            cvs.fillStyle = "rgb(35, 131, 51)"
-            cvs.fillRect(0, window.innerHeight*0.75, window.innerWidth, window.innerHeight*0.25)
+            cvs.drawImage(spaceImg, 0, 0, window.innerWidth, window.innerHeight-(window.innerHeight*0.25))
+            cvs.drawImage(grassImg, 0, window.innerHeight*0.75, window.innerWidth, window.innerHeight*0.25)
         }
 
         // generate 20 ships
         for (let i = 0; i < 20; ++i) {
-            let ship = new Ship(4000, 4000, 50, 50)
+            let ship = new Ship(4000, 4000, 75, 50)
             total.push(ship)
         }
 
@@ -276,6 +301,11 @@
         turrets.push(turretA)
         let turretB = new Turret((window.innerWidth*(0.66))-25, 50, 75, 25, 25)
         turrets.push(turretB)
+
+        // ------------------------------
+        // Generate and display animation
+        // ------------------------------
+
 
         let spawnTimer = 11 // spawn ship every 10 frames
         let turretATimer = (Math.round(Math.random()*10))+31 // shoot every 20-30 frames
