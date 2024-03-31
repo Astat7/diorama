@@ -21,6 +21,7 @@
         <img src="grass.png" alt="" id="GrassImg">
         <img src="ship.png" alt="" id="ShipRightImg">
         <img src="ship_left.png" alt="" id="ShipLeftImg">
+        <img src="turret.png" alt="" id="TurretImg">
     </div>
 
     <script>
@@ -42,6 +43,7 @@
         const grassImg = document.getElementById("GrassImg")
         const shipRightImg = document.getElementById("ShipRightImg")
         const shipLeftImg = document.getElementById("ShipLeftImg")
+        const turretImg = document.getElementById("TurretImg")
 
         // ---------------
         // Classes
@@ -173,7 +175,7 @@
 
             render(){
                 cvs.strokeStyle = this.color
-                cvs.lineWidth = 5
+                cvs.lineWidth = 3
                 cvs.beginPath()
                 cvs.moveTo(this.start.x, this.start.y)
                 cvs.lineTo(this.end.x, this.end.y)
@@ -204,8 +206,7 @@
             }
 
             render(){
-                cvs.fillStyle = this.color
-                cvs.fillRect(this.position.x, this.position.y, this.size.x, this.size.y)
+                cvs.drawImage(turretImg, this.position.x, this.position.y, this.size.x, this.size.y)
             }
 
             fireAt(xi, yi){
@@ -297,9 +298,9 @@
         }
 
         // generate 2 turrets
-        let turretA = new Turret((window.innerWidth*(0.33))-25, 50, 75, 25, 25)
+        let turretA = new Turret((window.innerWidth*(0.33))-25, 101, 150, 51, 21)
         turrets.push(turretA)
-        let turretB = new Turret((window.innerWidth*(0.66))-25, 50, 75, 25, 25)
+        let turretB = new Turret((window.innerWidth*(0.66))-25, 101, 150, 51, 21)
         turrets.push(turretB)
 
         // ------------------------------
@@ -316,12 +317,12 @@
             turretATimer = turretATimer -1 >= 0 ? turretATimer - 1 : (Math.round(Math.random()*10)-5)+30
             turretBTimer = turretBTimer -1 >= 0 ? turretBTimer - 1 : (Math.round(Math.random()*10)-5)+30
 
-            // spawn ship every 60 frames
+            // spawn ship every 10 frames
             if ((spawnTimer == 0) && (ships.length < 15)) {
                 spawnShip()
             }
 
-            // do
+            // move
             shipStep()
 
             // fire turrets
